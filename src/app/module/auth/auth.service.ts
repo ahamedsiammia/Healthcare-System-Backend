@@ -5,10 +5,13 @@ import config from "../../config";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../utils/jwt";
 import type {
+	IGoogleLoinPayload,
 	ILoginUserPayload,
 	IRegisterPatientPayload,
 	IRequestUser,
 } from "./auth.interface";
+import { googleClient } from "../../lib/googleAuth";
+import { GoogleAuth, TokenPayload } from "google-auth-library";
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
 	const { name, password } = payload;
@@ -88,7 +91,7 @@ const loginUser = async (payload: ILoginUserPayload) => {
 		throw new Error("User is deleted");
 	}
 
-	const isPasswordMatched = await bcrypt.compare(password, user.password);
+	const isPasswordMatched = await bcrypt.compare(password, user.password as string);
 
 	if (!isPasswordMatched) {
 		throw new Error("Invalid credentials");
@@ -188,9 +191,40 @@ const refreshToken = async (token: string) => {
 	};
 };
 
+const googleLoin = async(payload : IGoogleLoinPayload)=>{
+
+	let googleIdTokenPayload: TokenPayload | null | undefined = null;
+	
+	try {
+		const 	ticket = await googleClient.verifyIdToken({
+			idToken : payload.idToken,
+			audience :config.google_client_id
+		});
+
+		googleIdTokenPayload = ticket.getPayload();
+	} catch (error) {
+		console.log("Google Id Toke  Verification Filed",error);
+		throw new Error("Invalid or Expired Google Id or Token");
+	}
+
+	if(!googleIdTokenPayload){
+				throw new Error("Invalid or Expired Google Id or Token");
+	}
+
+	const isPatientExitsWithGoogleAuth = await prisma.user.findUnique({
+		where : {
+			email : googleIdTokenPayload.email,
+			role : Role.PATIENT
+		}
+	})
+
+
+}
+
 export const AuthService = {
 	registerPatient,
 	loginUser,
 	getMe,
 	refreshToken,
+	googleLoin
 };
