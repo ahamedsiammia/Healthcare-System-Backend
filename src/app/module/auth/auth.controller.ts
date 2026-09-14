@@ -113,18 +113,16 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
 	});
 });
 
-
-
 const googleLogin = catchAsync(async (req: Request, res: Response) => {
 	const payload = req.body;
 
-	const result = await AuthService.googleLoin(payload)
-	
+	const result = await AuthService.googleLoin(payload);
+
 	sendResponse(res, {
 		statusCode: httpStatus.OK,
 		success: true,
 		message: "New tokens generated successfully",
-		data: {result},
+		data: { result },
 	});
 });
 
@@ -133,5 +131,5 @@ export const AuthController = {
 	loginUser,
 	getMe,
 	refreshToken,
-	googleLogin
+	googleLogin,
 };
