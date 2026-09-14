@@ -36,17 +36,25 @@ app.post("/zod",async(req:Request,res:Response,next:NextFunction)=>{
 	try {
 		const UserZodSchema = z.object({
 		name : z.string(),
-		age : z.number(),
-		isverifid: z.boolean(),
-		books : z.array(z.string())
+		age : z.number().optional(),
+		isverifid: z.boolean().optional(),
+		books : z.array(z.string()).optional()
 	});
 
 	const payload = req.body;
 
-	const result = UserZodSchema.parse(payload);
+	const result = UserZodSchema.safeParse(payload);
+
+	if(!result.success){
+		console.log(result.error);
+	}
+
+	if(result.success){
+		console.log(result.data);
+	}
 
 	console.log(result,"this is zod result");
-	
+
 	res.status(httpStatus.OK).json({
 		success: true,
 		message: "Welcome to PH Healthcare System Backend",
