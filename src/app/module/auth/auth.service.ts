@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import type { JwtPayload, SignOptions } from "jsonwebtoken";
-import { Role, UserStatus } from "../../../generated/prisma/enums";
+import { authProvider, Role, UserStatus } from "../../../generated/prisma/enums";
 import config from "../../config";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../utils/jwt";
@@ -12,6 +12,7 @@ import type {
 } from "./auth.interface";
 import { googleClient } from "../../lib/googleAuth";
 import { GoogleAuth, TokenPayload } from "google-auth-library";
+import { error } from "node:console";
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
 	const { name, password } = payload;
@@ -214,10 +215,62 @@ const googleLoin = async(payload : IGoogleLoinPayload)=>{
 	const isPatientExitsWithGoogleAuth = await prisma.user.findUnique({
 		where : {
 			email : googleIdTokenPayload.email,
-			role : Role.PATIENT
+			role : Role.PATIENT,
+			googleId : googleIdTokenPayload.sub
 		}
 	})
 
+	if(!googleIdTokenPayload.email){
+		throw new Error("Google Email Not Found")
+	}
+	if( !googleIdTokenPayload.name){
+		throw new Error("Google User Name Not Found")
+	}
+
+
+	let user = isPatientExitsWithGoogleAuth;
+
+	if(!user){
+		user = await prisma.user.create({
+			data : {
+				name : googleIdTokenPayload.name,
+				email : googleIdTokenPayload.email,
+				role : Role.PATIENT,
+				googleId : googleIdTokenPayload.sub,
+				authProvider : authProvider.GOOGLE,
+				patient : {
+					create : {
+						name : googleIdTokenPayload.name,
+						email :googleIdTokenPayload.email
+					}
+				}
+			}
+		})
+	}
+
+		const jwtPayload = {
+		userId: user.id,
+		name: user.name,
+		email: user.email,
+		role: user.role,
+	};
+
+	const accessToken = jwtUtils.createToken(
+		jwtPayload,
+		config.jwt_access_secret,
+		config.jwt_access_expires_in as SignOptions,
+	);
+
+	const refreshToken = jwtUtils.createToken(
+		jwtPayload,
+		config.jwt_refresh_secret,
+		config.jwt_refresh_expires_in as SignOptions,
+	);
+
+	return {
+		accessToken,
+		refreshToken,
+	};
 
 }
 

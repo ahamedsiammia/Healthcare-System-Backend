@@ -18,6 +18,6 @@ enum Gender {
 }
 
 enum authProvider {
-   GOOGLE 
-   CREDENTIAL
+  GOOGLE
+  CREDENTIAL
 }
