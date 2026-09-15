@@ -19,17 +19,16 @@ import { GoogleAuth, type TokenPayload } from "google-auth-library";
 import { error } from "node:console";
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
-	const { name, password, email } = payload;
-	// console.log(payload, "request payload");
-	// const isUserExists = await prisma.user.findUnique({
-	// 	where: {
-	// 		email: email,
-	// 	},
-	// });
+	const { name, password, email, patient:patientData } = payload;
+	const isUserExists = await prisma.user.findUnique({
+		where: {
+			email: email,
+		},
+	});
 
-	// if (isUserExists) {
-	// 	throw new Error("User with this email already exists");
-	// }
+	if (isUserExists) {
+		throw new Error("User with this email already exists");
+	}
 
 	const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -44,7 +43,7 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 			status: UserStatus.ACTIVE,
 			emailVerified: false,
 			patient: {
-				create: { name, email },
+				create: { name, email , contactNumber :patientData?.contactNumber},
 			},
 		},
 		omit: { password: true },
