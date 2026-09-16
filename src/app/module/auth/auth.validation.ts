@@ -1,4 +1,4 @@
-import z from "zod";
+import z, { email } from "zod";
 
  const PatientRegistrationZodSchema = z.object({
 	name : z.string("Not a string!").min(3,"Name Must be 3 character long!"),
@@ -15,6 +15,24 @@ import z from "zod";
 	}).optional()
 })
 
+const ForgotPasswordZodSchema = z.object({
+	email : z.email("Not Email")
+})
+
+const ResetPasswordZodSchema = z.object({
+		email : z.email("Not Email !"),
+		otp : z.string("Not OTP").length(6),
+	newPassword : z.string() 
+				.min(8,"Password must be at least 8 characters long" )
+  				.max(20,"Password cannot exceed 20 characters")
+  				.refine((val) => /[A-Z]/.test(val), "Password must contain at least one uppercase letter")
+  				.refine((val) => /[a-z]/.test(val),"Password must contain at least one lowercase letter")
+  				.refine((val) => /[0-9]/.test(val), "Password must contain at least one number")
+  				.refine((val) => /[!@#$%^&*]/.test(val),"Password must contain at least one special character (!@#$%^&*)"),
+})
+
 export const userValidation ={
-    PatientRegistrationZodSchema
+    PatientRegistrationZodSchema,
+	ResetPasswordZodSchema,
+	ForgotPasswordZodSchema
 } 

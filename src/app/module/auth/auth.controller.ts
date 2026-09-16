@@ -134,12 +134,13 @@ const googleLogin = catchAsync(async (req: Request, res: Response) => {
 const forgotPassword = catchAsync(async (req: Request, res: Response) => {
 	const payload = req.body;
 
-	const result = await AuthService.forgotPassword(payload)
+	await AuthService.forgotPassword(payload)
+
 	sendResponse(res, {
 		statusCode: httpStatus.OK,
 		success: true,
-		message: "New tokens generated successfully",
-		data: { result },
+		message: `OTP send to this ${payload.email}  Email.`,
+		data: null,
 	});
 });
 const resetPassword = catchAsync(async (req: Request, res: Response) => {
@@ -150,8 +151,8 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
 	sendResponse(res, {
 		statusCode: httpStatus.OK,
 		success: true,
-		message: "New tokens generated successfully",
-		data: { result },
+		message: "Password Change successfully",
+		data: result
 	});
 });
 

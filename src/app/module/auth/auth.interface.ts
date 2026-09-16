@@ -30,6 +30,6 @@ export interface IForgotPassword {
 }
 export interface IResetPassword {
 	email : string,
-	otp : number,
+	otp : string,
 	newPassword : string
 }
