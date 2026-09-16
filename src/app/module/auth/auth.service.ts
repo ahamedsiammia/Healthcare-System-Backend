@@ -60,7 +60,7 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 
 	const accessToken = jwtUtils.createToken(
 		jwtPayload,
-		config.jwt_access_secret,
+		config.jwt_access_secret as string,
 		config.jwt_access_expires_in as SignOptions,
 	);
 
@@ -334,10 +334,20 @@ const googleLoin = async (payload: IGoogleLoinPayload) => {
 	};
 };
 
+const forgotPassword = async(payload : any)=>{
+
+};
+
+const resetPassword =async(payload : any)=>{
+
+}
+
 export const AuthService = {
 	registerPatient,
 	loginUser,
 	getMe,
 	refreshToken,
 	googleLoin,
+	forgotPassword,
+	resetPassword
 };
