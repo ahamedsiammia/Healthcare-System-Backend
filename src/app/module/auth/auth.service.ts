@@ -21,6 +21,7 @@ import { GoogleAuth, type TokenPayload } from "google-auth-library";
 import { error } from "node:console";
 import crypto from "crypto"
 import { redisClient } from "../../lib/redis";
+import { transporter } from "../../lib/nodemailer";
 
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
@@ -380,11 +381,21 @@ const forgotPassword = async(payload : IForgotPassword)=>{
 		}
 	})
 
+	// send a otp with user mail
+
+	await transporter.sendMail({
+		from : config.email_sender,
+		to : isUserExists.email,
+		subject : "Forgot Password",
+		html: ` <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>HealthCare - Password Reset</title> </head> <body style=" margin: 0; padding: 0; background-color: #f4f7fb; font-family: Arial, Helvetica, sans-serif; "> <div style=" width: 100%; padding: 40px 15px; box-sizing: border-box; "> <div style=" max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); "> <!-- Header --> <div style=" background: linear-gradient(135deg, #00bfa6, #00a98f); padding: 30px 25px; text-align: center; "> <h1 style=" margin: 0; color: #ffffff; font-size: 30px; font-weight: 700; letter-spacing: 0.5px; "> HealthCare </h1> <p style=" margin: 8px 0 0; color: #e6fffa; font-size: 14px; "> Your Health, Our Priority </p> </div> <!-- Content --> <div style=" padding: 40px 35px; text-align: center; "> <h2 style=" margin: 0 0 15px; color: #1f2937; font-size: 24px; "> Reset Your Password </h2> <p style=" margin: 0 auto 25px; max-width: 440px; color: #6b7280; font-size: 15px; line-height: 1.7; "> We received a request to reset the password for your HealthCare account. Use the verification code below to continue. </p> <!-- OTP Box --> <div style=" margin: 25px auto; padding: 18px 20px; max-width: 260px; background-color: #f0fdfa; border: 1px solid #99f6e4; border-radius: 12px; "> <p style=" margin: 0 0 8px; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; "> Your OTP Code </p> <div style=" color: #00a98f; font-size: 34px; font-weight: 700; letter-spacing: 8px; "> ${otp} </div> </div> <p style=" margin: 20px 0 0; color: #ef4444; font-size: 13px; font-weight: 600; "> This OTP will expire in 5 minutes. </p> <p style=" margin: 25px auto 0; max-width: 430px; color: #6b7280; font-size: 13px; line-height: 1.6; "> If you did not request a password reset, please ignore this email. Your account will remain secure. </p> </div> <!-- Footer --> <div style=" background-color: #f8fafc; padding: 22px 25px; text-align: center; border-top: 1px solid #e5e7eb; "> <p style=" margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.6; "> This is an automated email from HealthCare. <br /> Please do not reply to this email. </p> <p style=" margin: 12px 0 0; color: #64748b; font-size: 12px; "> © ${new Date().getFullYear()} HealthCare. All rights reserved. </p> </div> </div> </div> </body> </html> `
+
+	})
+
 };
 
 const resetPassword =async(payload : IResetPassword)=>{
 		const {email,otp,newPassword} = payload;
-console.log(payload);
+
 	const isUserExists = await prisma.user.findUnique({
 		where : {
 			email : email
@@ -435,7 +446,216 @@ console.log(payload);
 	});
 
 	await redisClient.del([key])
-return updateUser
+
+
+ await transporter.sendMail({
+  from: config.email_sender,
+  to: isUserExists.email,
+  subject: "HealthCare - Password Reset Successful",
+  html: `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>HealthCare - Password Reset Successful</title>
+      </head>
+
+      <body style="
+        margin: 0;
+        padding: 0;
+        background-color: #f4f7f9;
+        font-family: Arial, Helvetica, sans-serif;
+      ">
+
+        <div style="
+          width: 100%;
+          padding: 45px 15px;
+          box-sizing: border-box;
+        ">
+
+          <div style="
+            max-width: 570px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 8px 35px rgba(15, 23, 42, 0.08);
+          ">
+
+            <!-- Header -->
+            <div style="
+              padding: 30px 25px;
+              text-align: center;
+              background: linear-gradient(135deg, #00bfa6, #009e87);
+            ">
+
+              <h1 style="
+                margin: 0;
+                color: #ffffff;
+                font-size: 30px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+              ">
+                HealthCare
+              </h1>
+
+              <p style="
+                margin: 8px 0 0;
+                color: #d9fffa;
+                font-size: 14px;
+              ">
+                Your Health, Our Priority
+              </p>
+
+            </div>
+
+
+            <!-- Main Content -->
+            <div style="
+              padding: 42px 38px;
+              text-align: center;
+            ">
+
+              <!-- Success Icon -->
+              <div style="
+                width: 68px;
+                height: 68px;
+                margin: 0 auto 22px;
+                border-radius: 50%;
+                background-color: #e7f9f5;
+                text-align: center;
+                line-height: 68px;
+                font-size: 32px;
+              ">
+                ✓
+              </div>
+
+
+              <h2 style="
+                margin: 0 0 14px;
+                color: #172033;
+                font-size: 25px;
+                font-weight: 700;
+              ">
+                Password Reset Successful
+              </h2>
+
+
+              <p style="
+                margin: 0 auto;
+                max-width: 440px;
+                color: #64748b;
+                font-size: 15px;
+                line-height: 1.7;
+              ">
+                Your HealthCare account password has been successfully
+                updated. You can now use your new password to sign in
+                to your account.
+              </p>
+
+
+              <!-- Status Card -->
+              <div style="
+                margin: 30px auto;
+                padding: 20px;
+                max-width: 400px;
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                text-align: left;
+              ">
+
+                <p style="
+                  margin: 0 0 8px;
+                  color: #94a3b8;
+                  font-size: 12px;
+                  text-transform: uppercase;
+                  letter-spacing: 1px;
+                  font-weight: 600;
+                ">
+                  Account Security
+                </p>
+
+                <p style="
+                  margin: 0;
+                  color: #334155;
+                  font-size: 14px;
+                  line-height: 1.6;
+                ">
+                  Your password was changed successfully. For your
+                  security, please keep your new password private.
+                </p>
+
+              </div>
+
+
+              <!-- Security Warning -->
+              <div style="
+                margin: 25px auto 0;
+                padding: 16px 18px;
+                max-width: 400px;
+                background-color: #fff8eb;
+                border-left: 4px solid #f59e0b;
+                border-radius: 6px;
+                text-align: left;
+              ">
+
+                <p style="
+                  margin: 0;
+                  color: #92400e;
+                  font-size: 13px;
+                  line-height: 1.6;
+                ">
+                  <strong>Didn't reset your password?</strong>
+                  If you did not make this change, please contact
+                  HealthCare support immediately and secure your account.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <!-- Footer -->
+            <div style="
+              padding: 24px 25px;
+              text-align: center;
+              background-color: #f8fafc;
+              border-top: 1px solid #e5e7eb;
+            ">
+
+              <p style="
+                margin: 0;
+                color: #64748b;
+                font-size: 12px;
+                line-height: 1.7;
+              ">
+                This is an automated security notification from HealthCare.
+                <br />
+                Please do not reply to this email.
+              </p>
+
+              <p style="
+                margin: 12px 0 0;
+                color: #94a3b8;
+                font-size: 12px;
+              ">
+                © ${new Date().getFullYear()} HealthCare. All rights reserved.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </body>
+    </html>
+  `,
+});
+
+
 
 }
 
