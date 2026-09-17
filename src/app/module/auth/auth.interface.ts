@@ -33,3 +33,8 @@ export interface IResetPassword {
 	otp : string,
 	newPassword : string
 }
+
+export interface IEmailVerification {
+	email : string,
+	otp : string
+}

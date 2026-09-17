@@ -42,6 +42,19 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
 	});
 });
 
+const emailVerification = catchAsync(async(req:Request,res:Response)=>{
+	const payload = req.body;
+
+	await AuthService.emailVerification(payload)
+
+		sendResponse(res, {
+		statusCode: httpStatus.CREATED,
+		success: true,
+		message: "Patient registered successfully",
+		data:null,
+	});
+})
+
 const loginUser = catchAsync(async (req: Request, res: Response) => {
 	const payload = req.body;
 	const result = await AuthService.loginUser(payload);
@@ -163,5 +176,6 @@ export const AuthController = {
 	refreshToken,
 	googleLogin,
 	forgotPassword,
-	resetPassword
+	resetPassword,
+	emailVerification
 };

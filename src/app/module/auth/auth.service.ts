@@ -9,6 +9,7 @@ import config from "../../config";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../utils/jwt";
 import type {
+	IEmailVerification,
 	IForgotPassword,
 	IGoogleLoinPayload,
 	ILoginUserPayload,
@@ -38,7 +39,246 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 
 	const hashedPassword = await bcrypt.hash(password, 10);
 
-	console.log(hashedPassword);
+
+	const otp = crypto.randomInt(111111,1000000)
+
+	const key = `Register-otp-key:${email}`;
+	
+	await redisClient.set(key,otp,{
+		expiration : {
+			type : "EX",
+			value : 5 * 60
+		}
+	});
+
+
+ await transporter.sendMail({
+  from: config.email_sender,
+  to: email,
+  subject: "HealthCare - Verify Your Email",
+  html: `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Verify Your HealthCare Account</title>
+      </head>
+
+      <body style="
+        margin: 0;
+        padding: 0;
+        background-color: #f4f7f9;
+        font-family: Arial, Helvetica, sans-serif;
+      ">
+
+        <div style="
+          width: 100%;
+          padding: 45px 15px;
+          box-sizing: border-box;
+        ">
+
+          <div style="
+            max-width: 570px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 8px 35px rgba(15, 23, 42, 0.08);
+          ">
+
+            <!-- Header -->
+            <div style="
+              padding: 32px 25px;
+              text-align: center;
+              background: linear-gradient(135deg, #00bfa6, #009e87);
+            ">
+
+              <h1 style="
+                margin: 0;
+                color: #ffffff;
+                font-size: 30px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+              ">
+                HealthCare
+              </h1>
+
+              <p style="
+                margin: 8px 0 0;
+                color: #d9fffa;
+                font-size: 14px;
+              ">
+                Your Health, Our Priority
+              </p>
+
+            </div>
+
+
+            <!-- Main Content -->
+            <div style="
+              padding: 42px 38px;
+              text-align: center;
+            ">
+
+              <div style="
+                width: 68px;
+                height: 68px;
+                margin: 0 auto 22px;
+                border-radius: 50%;
+                background-color: #e7f9f5;
+                text-align: center;
+                line-height: 68px;
+                font-size: 30px;
+              ">
+                ✉
+              </div>
+
+              <h2 style="
+                margin: 0 0 14px;
+                color: #172033;
+                font-size: 25px;
+                font-weight: 700;
+              ">
+                Verify Your Email Address
+              </h2>
+
+              <p style="
+                margin: 0 auto;
+                max-width: 440px;
+                color: #64748b;
+                font-size: 15px;
+                line-height: 1.7;
+              ">
+                Welcome to HealthCare! To complete your registration,
+                please verify your email address using the verification
+                code below.
+              </p>
+
+
+              <!-- OTP -->
+              <div style="
+                margin: 30px auto 20px;
+                padding: 22px 20px;
+                max-width: 300px;
+                background-color: #f0fdfa;
+                border: 1px solid #99f6e4;
+                border-radius: 14px;
+              ">
+
+                <p style="
+                  margin: 0 0 10px;
+                  color: #64748b;
+                  font-size: 12px;
+                  font-weight: 600;
+                  text-transform: uppercase;
+                  letter-spacing: 1.5px;
+                ">
+                  Verification Code
+                </p>
+
+                <div style="
+                  color: #009e87;
+                  font-size: 36px;
+                  font-weight: 700;
+                  letter-spacing: 9px;
+                ">
+                  ${otp}
+                </div>
+
+              </div>
+
+
+              <!-- Expiry -->
+              <p style="
+                margin: 0;
+                color: #ef4444;
+                font-size: 13px;
+                font-weight: 600;
+              ">
+                This verification code will expire in 5 minutes.
+              </p>
+
+
+              <!-- Info Box -->
+              <div style="
+                margin: 28px auto 0;
+                padding: 17px 18px;
+                max-width: 410px;
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                text-align: left;
+              ">
+
+                <p style="
+                  margin: 0;
+                  color: #64748b;
+                  font-size: 13px;
+                  line-height: 1.7;
+                ">
+                  Enter this OTP on the HealthCare verification page
+                  to activate your account. For your security, do not
+                  share this code with anyone.
+                </p>
+
+              </div>
+
+
+              <!-- Warning -->
+              <p style="
+                margin: 28px auto 0;
+                max-width: 430px;
+                color: #94a3b8;
+                font-size: 12px;
+                line-height: 1.7;
+              ">
+                If you did not create a HealthCare account, you can safely
+                ignore this email. No account will be verified without
+                this code.
+              </p>
+
+            </div>
+
+
+            <!-- Footer -->
+            <div style="
+              padding: 24px 25px;
+              text-align: center;
+              background-color: #f8fafc;
+              border-top: 1px solid #e5e7eb;
+            ">
+
+              <p style="
+                margin: 0;
+                color: #64748b;
+                font-size: 12px;
+                line-height: 1.7;
+              ">
+                This is an automated verification email from HealthCare.
+                <br />
+                Please do not reply to this email.
+              </p>
+
+              <p style="
+                margin: 12px 0 0;
+                color: #94a3b8;
+                font-size: 12px;
+              ">
+                © ${new Date().getFullYear()} HealthCare. All rights reserved.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </body>
+    </html>
+  `,
+  });
+
 
 	const createdUser = await prisma.user.create({
 		data: {
@@ -83,6 +323,46 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 		refreshToken,
 	};
 };
+
+const emailVerification = async (payload:IEmailVerification)=>{
+	const {email,otp}=payload;
+
+	const isUserExists = await prisma.user.findUnique({
+		where : {
+			email
+		}
+	});
+
+	if(!isUserExists){
+		throw new Error("User Dose Not Exist")
+	};
+
+	const key = `Register-otp-key:${email}`
+
+	const redisOtp = await redisClient.get(key);
+
+
+	if(!redisOtp){
+		throw new Error("Invalid OTP")
+	}
+
+	if(redisOtp !== otp){
+		throw new Error("Dose Not Match OTP")
+	}
+
+	await prisma.user.update({
+		where : {
+			email
+		},
+		data : {
+			emailVerified : true
+		}
+	});
+
+	await redisClient.del([key]);
+
+
+}
 
 const loginUser = async (payload: ILoginUserPayload) => {
 	const { password } = payload;
@@ -666,5 +946,6 @@ export const AuthService = {
 	refreshToken,
 	googleLoin,
 	forgotPassword,
-	resetPassword
+	resetPassword,
+	emailVerification
 };
