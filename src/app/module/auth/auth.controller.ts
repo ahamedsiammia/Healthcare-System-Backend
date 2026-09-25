@@ -14,6 +14,19 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
 
 	const result = await AuthService.registerPatient(payload);
 
+		sendResponse(res, {
+		statusCode: httpStatus.CREATED,
+		success: true,
+		message: "Verification OTP Send",
+		data: null,
+	});
+});
+
+const emailVerification = catchAsync(async(req:Request,res:Response)=>{
+	const payload = req.body;
+
+	const result = await AuthService.emailVerification(payload)
+	
 	const { accessToken, refreshToken, user, patient } = result;
 
 	res.cookie("accessToken", accessToken, {
@@ -39,19 +52,6 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
 			user,
 			patient,
 		},
-	});
-});
-
-const emailVerification = catchAsync(async(req:Request,res:Response)=>{
-	const payload = req.body;
-
-	await AuthService.emailVerification(payload)
-
-		sendResponse(res, {
-		statusCode: httpStatus.CREATED,
-		success: true,
-		message: "Patient registered successfully",
-		data:null,
 	});
 })
 
@@ -136,11 +136,29 @@ const googleLogin = catchAsync(async (req: Request, res: Response) => {
 
 	const result = await AuthService.googleLoin(payload);
 
+	const { accessToken, refreshToken, } = result;
+
+	res.cookie("accessToken", accessToken, {
+		httpOnly: true,
+		secure: false,
+		sameSite: "none",
+		maxAge: 1000 * 60 * 60 * 24, // 24 hour or 1 day
+	});
+	res.cookie("refreshToken", refreshToken, {
+		httpOnly: true,
+		secure: false,
+		sameSite: "none",
+		maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+	});
+
 	sendResponse(res, {
-		statusCode: httpStatus.OK,
+		statusCode: httpStatus.CREATED,
 		success: true,
-		message: "New tokens generated successfully",
-		data: { result },
+		message: "Patient registered successfully",
+		data: {
+			accessToken,
+			refreshToken,
+		},
 	});
 });
 

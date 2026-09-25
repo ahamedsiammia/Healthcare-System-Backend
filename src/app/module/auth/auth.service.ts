@@ -40,11 +40,28 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 	const hashedPassword = await bcrypt.hash(password, 10);
 
 
-	const otp = crypto.randomInt(111111,1000000)
+	const otpKey = `Register-otp-key:${email}`;
+	const otpValue = crypto.randomInt(111111,1000000)
 
-	const key = `Register-otp-key:${email}`;
 	
-	await redisClient.set(key,otp,{
+	await redisClient.set(otpKey,otpValue,{
+		expiration : {
+			type : "EX",
+			value : 5 * 60
+		}
+	});
+
+	const registerDataKey =`Register-Data-key:${email}`;
+
+	const registerDataPayload ={
+		name : name,
+		email : email,
+		password : hashedPassword,
+		patient: patientData
+
+	}
+
+	await redisClient.set(registerDataKey,JSON.stringify(registerDataPayload),{
 		expiration : {
 			type : "EX",
 			value : 5 * 60
@@ -183,7 +200,7 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
                   font-weight: 700;
                   letter-spacing: 9px;
                 ">
-                  ${otp}
+                  ${otpValue}
                 </div>
 
               </div>
@@ -280,48 +297,6 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
   });
 
 
-	const createdUser = await prisma.user.create({
-		data: {
-			name,
-			email,
-			password: hashedPassword,
-			role: Role.PATIENT,
-			status: UserStatus.ACTIVE,
-			emailVerified: false,
-			patient: {
-				create: { name, email , contactNumber :patientData?.contactNumber},
-			},
-		},
-		omit: { password: true },
-		include: { patient: true },
-	});
-
-	const { patient, ...user } = createdUser;
-	const jwtPayload = {
-		userId: user.id,
-		name: user.name,
-		email: user.email,
-		role: user.role,
-	};
-
-	const accessToken = jwtUtils.createToken(
-		jwtPayload,
-		config.jwt_access_secret as string,
-		config.jwt_access_expires_in as SignOptions,
-	);
-
-	const refreshToken = jwtUtils.createToken(
-		jwtPayload,
-		config.jwt_refresh_secret,
-		config.jwt_refresh_expires_in as SignOptions,
-	);
-
-	return {
-		user,
-		patient,
-		accessToken,
-		refreshToken,
-	};
 };
 
 const emailVerification = async (payload:IEmailVerification)=>{
@@ -333,7 +308,7 @@ const emailVerification = async (payload:IEmailVerification)=>{
 		}
 	});
 
-	if(!isUserExists){
+	if(isUserExists){
 		throw new Error("User Dose Not Exist")
 	};
 
@@ -350,17 +325,314 @@ const emailVerification = async (payload:IEmailVerification)=>{
 		throw new Error("Dose Not Match OTP")
 	}
 
-	await prisma.user.update({
-		where : {
-			email
-		},
-		data : {
-			emailVerified : true
-		}
-	});
-
 	await redisClient.del([key]);
 
+	const registerDataKey =`Register-Data-key:${email}`;
+
+	const registerDataPayload = await redisClient.get(registerDataKey);
+
+	const registerUserData:IRegisterPatientPayload = JSON.parse(registerDataPayload as string);
+	
+
+	if(!registerUserData){
+		throw new Error("User Data Not Exist")
+	}
+
+
+
+  	const createdUser = await prisma.user.create({
+		data: {
+			name :registerUserData.name,
+			email : registerUserData.email,
+			password :registerUserData.password,
+			role: Role.PATIENT,
+			status: UserStatus.ACTIVE,
+			emailVerified: true,
+			patient: {
+				create: { name :registerUserData.name, email : registerUserData.email , contactNumber:registerUserData.patient?.contactNumber},
+			},
+		},
+		omit: { password: true },
+		include: { patient: true },
+	});
+
+	const { patient, ...user } = createdUser;
+	const jwtPayload = {
+		userId: user.id,
+		name: user.name,
+		email: user.email,
+		role: user.role,
+	};
+	
+	await redisClient.del([registerDataKey])
+
+
+	const accessToken = jwtUtils.createToken(
+		jwtPayload,
+		config.jwt_access_secret as string,
+		config.jwt_access_expires_in as SignOptions,
+	);
+
+	const refreshToken = jwtUtils.createToken(
+		jwtPayload,
+		config.jwt_refresh_secret,
+		config.jwt_refresh_expires_in as SignOptions,
+	);
+
+
+await transporter.sendMail({
+  from: config.email_sender,
+  to: email,
+  subject: "Welcome to HealthCare - Your Healthcare Journey Starts Here",
+  html: `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Welcome to HealthCare</title>
+      </head>
+
+      <body style="
+        margin: 0;
+        padding: 0;
+        background-color: #f4f7f9;
+        font-family: Arial, Helvetica, sans-serif;
+      ">
+
+        <div style="
+          width: 100%;
+          padding: 45px 15px;
+          box-sizing: border-box;
+        ">
+
+          <div style="
+            max-width: 570px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 8px 35px rgba(15, 23, 42, 0.08);
+          ">
+
+            <!-- Header -->
+            <div style="
+              padding: 35px 25px;
+              text-align: center;
+              background: linear-gradient(135deg, #00bfa6, #009e87);
+            ">
+
+              <h1 style="
+                margin: 0;
+                color: #ffffff;
+                font-size: 31px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+              ">
+                HealthCare
+              </h1>
+
+              <p style="
+                margin: 9px 0 0;
+                color: #d9fffa;
+                font-size: 14px;
+              ">
+                Your Health, Our Priority
+              </p>
+
+            </div>
+
+
+            <!-- Main Content -->
+            <div style="
+              padding: 45px 38px;
+              text-align: center;
+            ">
+
+              <!-- Welcome Icon -->
+              <div style="
+                width: 72px;
+                height: 72px;
+                margin: 0 auto 24px;
+                border-radius: 50%;
+                background-color: #e7f9f5;
+                text-align: center;
+                line-height: 72px;
+                font-size: 32px;
+              ">
+                ✓
+              </div>
+
+
+              <h2 style="
+                margin: 0 0 15px;
+                color: #172033;
+                font-size: 26px;
+                font-weight: 700;
+              ">
+                Welcome to HealthCare!
+              </h2>
+
+
+              <p style="
+                margin: 0 auto 22px;
+                max-width: 440px;
+                color: #475569;
+                font-size: 15px;
+                line-height: 1.8;
+              ">
+                Hello <strong style="color: #172033;">${registerUserData.name}</strong>,
+                your account has been successfully created and verified.
+                We're happy to have you with us.
+              </p>
+
+
+              <p style="
+                margin: 0 auto;
+                max-width: 440px;
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.8;
+              ">
+                HealthCare is here to make accessing healthcare simpler,
+                more convenient, and more connected.
+              </p>
+
+
+              <!-- Features -->
+              <div style="
+                margin: 32px auto 0;
+                max-width: 430px;
+                text-align: left;
+              ">
+
+                <div style="
+                  padding: 15px 18px;
+                  margin-bottom: 10px;
+                  background-color: #f8fafc;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 10px;
+                ">
+                  <p style="
+                    margin: 0;
+                    color: #334155;
+                    font-size: 14px;
+                    line-height: 1.6;
+                  ">
+                    <strong style="color: #009e87;">
+                      Online Consultation
+                    </strong>
+                    <br />
+                    Connect with healthcare professionals from anywhere.
+                  </p>
+                </div>
+
+
+                <div style="
+                  padding: 15px 18px;
+                  margin-bottom: 10px;
+                  background-color: #f8fafc;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 10px;
+                ">
+                  <p style="
+                    margin: 0;
+                    color: #334155;
+                    font-size: 14px;
+                    line-height: 1.6;
+                  ">
+                    <strong style="color: #009e87;">
+                      Easy Healthcare Access
+                    </strong>
+                    <br />
+                    Manage your healthcare journey from one place.
+                  </p>
+                </div>
+
+
+                <div style="
+                  padding: 15px 18px;
+                  background-color: #f8fafc;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 10px;
+                ">
+                  <p style="
+                    margin: 0;
+                    color: #334155;
+                    font-size: 14px;
+                    line-height: 1.6;
+                  ">
+                    <strong style="color: #009e87;">
+                      Secure & Trusted
+                    </strong>
+                    <br />
+                    Your account and personal information are handled securely.
+                  </p>
+                </div>
+
+              </div>
+
+
+              <!-- Closing -->
+              <p style="
+                margin: 30px auto 0;
+                max-width: 430px;
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.7;
+              ">
+                Thank you for choosing HealthCare.
+                We look forward to being part of your healthcare journey.
+              </p>
+
+            </div>
+
+
+            <!-- Footer -->
+            <div style="
+              padding: 25px;
+              text-align: center;
+              background-color: #f8fafc;
+              border-top: 1px solid #e5e7eb;
+            ">
+
+              <p style="
+                margin: 0;
+                color: #64748b;
+                font-size: 12px;
+                line-height: 1.7;
+              ">
+                This is an automated welcome email from HealthCare.
+                <br />
+                Please do not reply to this email.
+              </p>
+
+              <p style="
+                margin: 12px 0 0;
+                color: #94a3b8;
+                font-size: 12px;
+              ">
+                © ${new Date().getFullYear()} HealthCare. All rights reserved.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </body>
+    </html>
+  `,
+});
+
+
+	return {
+		user,
+		patient,
+		accessToken,
+		refreshToken,
+	};
 
 }
 
