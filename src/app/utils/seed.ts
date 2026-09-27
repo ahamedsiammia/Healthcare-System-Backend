@@ -12,7 +12,6 @@ export const seedSuperAdmin =async ()=>{
         });
 
         if(isSuperAdminExist){
-            console.log("Super Admin Already Exist.");
             return;
         };
 
@@ -33,11 +32,10 @@ export const seedSuperAdmin =async ()=>{
                 password : hashPassword,
                 role : Role.SUPER_ADMIN,
                 needPasswordChange : false,
-                emailVerified : true
+                emailVerified : true,
             }
         });
 
-        console.log("Super Admin",superAdmin)
 
     } catch (error) {
         console.log("Error of Super Admin",error);

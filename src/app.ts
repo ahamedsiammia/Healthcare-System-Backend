@@ -14,6 +14,7 @@ import { AuthRoutes } from "./app/module/auth/auth.route";
 import z, { date } from "zod";
 import { redisClient } from "./app/lib/redis";
 import crypto from "crypto"
+import { userRouter } from "./app/module/user/user.router";
 
 const app: Application = express();
 
@@ -32,6 +33,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/v1/auth", AuthRoutes);
+app.use("/api/v1/user", userRouter);
 
 
 app.get("/test",async(req:Request,res:Response,next:NextFunction)=>{
